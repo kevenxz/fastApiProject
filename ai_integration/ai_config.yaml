@@ -1,0 +1,21 @@
+# ai_config.yaml
+services:
+  deepseek:
+    api_key: "your_deepseek_api_key_here"
+    base_url: "https://api.deepseek.com"
+    model: "deepseek-chat"
+    enabled: true
+
+  guiji:
+    api_key: ""
+    base_url: "https://api.siliconflow.cn/v1"
+    model: "deepseek-ai/DeepSeek-V3.1-Terminus"
+    enabled: true
+
+  kimi:
+    api_key: "your_kimi_api_key_here"
+    base_url: "https://api.moonshot.cn"
+    model: "moonshot-v1-8k"
+    enabled: true
+
+default_service: "deepseek"
