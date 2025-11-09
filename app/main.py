@@ -1,21 +1,22 @@
 # app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routers import ai_router, health
+from app.api.routers import ai_router, health, exchange_router
 import logging
 import logging.config
+
+from app.core.config import setup_logging
+from app.core.interceptors import RequestResponseLoggerMiddleware, ResponseBodyCaptureMiddleware
+
+# 初始化日志配置
+
+setup_logging()
 
 # 为所有模块设置日志级别
 logging.getLogger("app").setLevel(logging.INFO)
 logging.getLogger("ai_integration").setLevel(logging.INFO)
 
 
-# 配置全局日志格式
-logging.basicConfig(
-    level=logging.INFO,
-    format='[%(asctime)s]-[%(name)s]-[%(levelname)s] : %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
 
 app = FastAPI(
     title="AI Integration API",
@@ -31,10 +32,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# 添加中间件
+app.add_middleware(RequestResponseLoggerMiddleware)
+app.add_middleware(ResponseBodyCaptureMiddleware)
+
 
 # 注册路由
 app.include_router(ai_router)
 app.include_router(health)
+app.include_router(exchange_router)
 
 @app.get("/")
 async def root():
@@ -50,5 +56,13 @@ async def say_hello(name: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_config=None  # 使用自定义日志配置
+    )
+    # uvicorn.run(app, host="0.0.0.0", port=8000)
     print("Server started")
