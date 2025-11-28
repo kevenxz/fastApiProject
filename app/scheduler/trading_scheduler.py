@@ -24,15 +24,22 @@ class TradingScheduler:
 
     async def start(self):
         """Start the scheduler"""
-        self.session = aiohttp.ClientSession()
-        self.scheduler.start()
+        if self.session is None or  self.session.closed:
+            self.session = aiohttp.ClientSession()
+
+        if self.scheduler.running:
+            self.scheduler.resume()
+        else:
+            self.scheduler.start()
         logger.info("Trading scheduler started")
 
     async def stop(self):
         """Stop the scheduler"""
         if self.session:
             await self.session.close()
-        self.scheduler.shutdown()
+            self.session = None
+        if self.scheduler.running:
+            self.scheduler.pause()
         logger.info("Trading scheduler stopped")
 
     def add_trading_job(self,
@@ -147,7 +154,12 @@ class TradingScheduler:
         try:
             logger.info(f"Executing trade analysis for {chatTraderRequest.symbol.value} , 间隔：{interval} , job_id : {job_id}")
             # Prepare request payload
-            payload = chatTraderRequest
+            payload = chatTraderRequest.model_dump()
+            # Ensure symbol is serializable
+            if hasattr(chatTraderRequest.symbol, 'value'):
+                payload['symbol'] = chatTraderRequest.symbol.value
+            else:
+                payload['symbol'] = str(chatTraderRequest.symbol)
 
             # Call the trader API
             async with self.session.post(
