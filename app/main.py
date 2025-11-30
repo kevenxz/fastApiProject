@@ -1,5 +1,5 @@
 # app/main.py
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routers import ai_router, health, exchange_router, scheduler_router
 import logging
@@ -43,17 +43,39 @@ app.include_router(health)
 app.include_router(exchange_router)
 app.include_router(scheduler_router)
 
-@app.get("/")
-async def root():
-    return {
-        "message": "AI Integration Platform API",
-        "version": "1.0.0",
-        "docs": "/docs"
-    }
+# Mount static files
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
 
-@app.get("/hello/{name}")
-async def say_hello(name: str):
-    return {"message": f"Hello {name}"}
+frontend_dist = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
+
+if os.path.exists(frontend_dist):
+    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        # Allow API routes to pass through (though they should be caught by include_router above if matched)
+        # But since this is a catch-all, we need to be careful.
+        # Actually, FastAPI matches specific routes first.
+        # But if an API route is 404, it might fall here.
+        # We only want to serve index.html for non-API routes.
+        if full_path.startswith("api") or full_path.startswith("docs") or full_path.startswith("openapi.json"):
+             raise HTTPException(status_code=404, detail="Not Found")
+
+        index_path = os.path.join(frontend_dist, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+        return {"message": "Frontend not found"}
+else:
+    @app.get("/")
+    async def root():
+        return {
+            "message": "AI Integration Platform API",
+            "version": "1.0.0",
+            "docs": "/docs",
+            "frontend": "Not built or not found"
+        }
 
 if __name__ == "__main__":
     import uvicorn
